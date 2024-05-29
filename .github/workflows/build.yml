@@ -38,32 +38,6 @@ jobs:
           draft: true
           tag_name: Alpha
 
-  windows64_build:
-    name: Windows x86_64 Build
-    runs-on: windows-latest
-    defaults:
-      run:
-        shell: msys2 {0}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: "16"
-      - uses: msys2/setup-msys2@v2
-        with:
-          update: true
-          install: base-devel git mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-libevent mingw-w64-x86_64-pcre2 patch
-          msystem: MINGW64
-          path-type: inherit
-      - name: Add commit id into version
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        run: SHA=$(git rev-parse --short HEAD) && sed -i 's/\(v[0-9]\.[0-9]\.[0-9]\)/\1-'"$SHA"'/' src/version.h
-      - name: Build
-        run: bash scripts/build.windows.release.sh
-
-      - name: Package Release
-        run: 7z a subconverter_win64.7z subconverter/
-
       - name: Upload
         uses: actions/upload-artifact@v3
         with:
@@ -84,7 +58,6 @@ jobs:
     needs:
       [
         linux64_build,
-        windows64_build,
       ]
     runs-on: ubuntu-latest
     steps:
