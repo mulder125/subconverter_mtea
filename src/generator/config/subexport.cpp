@@ -611,8 +611,9 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
             break;
         case ProxyType::VLESS:
             singleproxy["type"] = "vless";
-            singleproxy["packet-encoding"] = "xudp";
             singleproxy["tls"] = true;
+            if (udp)
+                singleproxy["packet-encoding"] = "xudp";
             if (!x.UUID.empty())
                 singleproxy["uuid"] = x.UUID;
             if (!x.SNI.empty())
@@ -621,14 +622,15 @@ void proxyToClash(std::vector<Proxy> &nodes, YAML::Node &yamlnode, const ProxyGr
                 singleproxy["alpn"] = x.Alpn;
             if (!x.Fingerprint.empty())
                 singleproxy["fingerprint"] = x.Fingerprint;
-            if (!x.Flow.empty())
-                singleproxy["flow"] = x.Flow;
             if (x.XTLS == 2) {
                 singleproxy["flow"] = "xtls-rprx-vision";
+            } else if (!x.Flow.empty()) {
+                singleproxy["flow"] = x.Flow;
             }
             if (!x.PublicKey.empty() && !x.ShortID.empty()) {
                 singleproxy["reality-opts"]["public-key"] = x.PublicKey;
                 singleproxy["reality-opts"]["short-id"] = x.ShortID;
+                singleproxy["client-fingerprint"] = "random";
             }
             if (!scv.is_undef())
                 singleproxy["skip-cert-verify"] = scv.get();
@@ -2626,9 +2628,11 @@ void proxyToSingBox(std::vector<Proxy> &nodes, rapidjson::Document &json, std::v
                 if (!x.SNI.empty())
                     proxy.AddMember("sni", rapidjson::StringRef(x.SNI.c_str()), allocator);
 
-                if (!x.Flow.empty())
+                if (x.XTLS == 2) {
+                    proxy.AddMember("flow", rapidjson::StringRef("xtls-rprx-vision"), allocator);
+                } else if (!x.Flow.empty()) {
                     proxy.AddMember("flow", rapidjson::StringRef(x.Flow.c_str()), allocator);
-
+                }
                 // TLS 配置
                 rapidjson::Value tls(rapidjson::kObjectType);
                 tls.AddMember("enabled", true, allocator);
@@ -2643,16 +2647,21 @@ void proxyToSingBox(std::vector<Proxy> &nodes, rapidjson::Document &json, std::v
                         alpn.PushBack(rapidjson::StringRef(item.c_str()), allocator);
                     tls.AddMember("alpn", alpn, allocator);
                 }
-                if (x.XTLS == 2){
-                    if (!x.PublicKey.empty() && !x.ShortID.empty()) {
-                        rapidjson::Value reality(rapidjson::kObjectType);
-                        reality.AddMember("enabled", true, allocator);
-                        if (!x.PublicKey.empty())
-                            reality.AddMember("public_key", rapidjson::StringRef(x.PublicKey.c_str()), allocator);
-                        if (!x.ShortID.empty())
-                            reality.AddMember("short_id", rapidjson::StringRef(x.ShortID.c_str()), allocator);
-                        tls.AddMember("reality", reality, allocator);
-                    }
+
+                if (!x.PublicKey.empty() && !x.ShortID.empty()) {
+                    rapidjson::Value reality(rapidjson::kObjectType);
+                    reality.AddMember("enabled", true, allocator);
+                    if (!x.PublicKey.empty())
+                        reality.AddMember("public_key", rapidjson::StringRef(x.PublicKey.c_str()), allocator);
+                    if (!x.ShortID.empty())
+                        reality.AddMember("short_id", rapidjson::StringRef(x.ShortID.c_str()), allocator);
+                    tls.AddMember("reality", reality, allocator);
+
+                    rapidjson::Value utls(rapidjson::kObjectType);
+                    utls.AddMember("enable",true,allocator);
+                    std::array<std::string, 6> fingerprints = {"chrome", "firefox", "safari", "ios", "edge", "qq"};
+                    utls.AddMember("fingerprint", rapidjson::Value(fingerprints[rand() % fingerprints.size()].c_str(), allocator), allocator);
+                    tls.AddMember("utls", utls, allocator);
                 }
 
                 proxy.AddMember("tls", tls, allocator);

@@ -1829,7 +1829,7 @@ void explodeStdAnyTLS(std::string anytls, Proxy &node) {
     // 其他参数
     sni = getUrlArg(addition, "peer");
     alpn = getUrlArg(addition, "alpn");
-    fingerprint = getUrlArg(addition, "hpkp");
+    fingerprint = urlDecode(getUrlArg(addition, "hpkp"));
     tfo = tribool(getUrlArg(addition, "tfo"));
     scv = tribool(getUrlArg(addition, "insecure"));
 
@@ -1871,35 +1871,41 @@ void explodeStdVLESS(std::string vless, Proxy &node) {
         vless.erase(pos);
     }
 
-    decoded = urlSafeBase64Decode(vless);
-
-    // 尝试从URL参数中获取uuid
-    uuid = getUrlArg(addition, "uuid");
-
-    // 如果URL参数中没有uuid，尝试从decoded中解析
-    if (uuid.empty() && strFind(decoded, "@") && strFind(decoded, ":")) {
-        userinfo = decoded.substr(0, decoded.find('@'));
-        hostinfo = decoded.substr(decoded.find('@') + 1);
-
-        if (strFind(userinfo, ":")) {
-            user_parts = split(userinfo, ":");
-            if (user_parts.size() >= 2) {
-                uuid = user_parts[1];
-            }
-        } else {
-            uuid = userinfo;
-        }
-
-        if (regGetMatch(hostinfo, R"(^(.*?):(\d+)$)", 3, 0, &add, &port) != 0)
+    // 支持 uuid@host:port 格式
+    if (strFind(vless, "@")) {
+        if (regGetMatch(vless, R"(^(.*?)@(.*?):(\d+)$)", 4, 0, &uuid, &add, &port))
             return;
-    } else if (regGetMatch(vless, R"(^(.*?):(\d+)$)", 3, 0, &add, &port) != 0) {
-        return;
+    } else {
+        decoded = urlSafeBase64Decode(vless);
+        uuid = getUrlArg(addition, "uuid");
+
+        if (uuid.empty() && strFind(decoded, "@") && strFind(decoded, ":")) {
+            userinfo = decoded.substr(0, decoded.find('@'));
+            hostinfo = decoded.substr(decoded.find('@') + 1);
+
+            if (strFind(userinfo, ":")) {
+                user_parts = split(userinfo, ":");
+                if (user_parts.size() >= 2) {
+                    uuid = user_parts[1];
+                }
+            } else {
+                uuid = userinfo;
+            }
+
+            if (regGetMatch(hostinfo, R"(^(.*?):(\d+)$)", 3, 0, &add, &port) != 0)
+                return;
+        } else if (regGetMatch(vless, R"(^(.*?):(\d+)$)", 3, 0, &add, &port) != 0) {
+            return;
+        }
     }
 
     if (uuid.empty()) return;
 
     if (!addition.empty()) {
-        sni = getUrlArg(addition, "peer");
+        sni = getUrlArg(addition, "sni");
+        if (sni.empty()) {
+            sni = getUrlArg(addition, "peer");
+        }
         alpn = getUrlArg(addition, "alpn");
         fingerprint = getUrlArg(addition, "hpkp");
         flow = getUrlArg(addition, "flow");
