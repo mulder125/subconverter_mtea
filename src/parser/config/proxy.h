@@ -97,6 +97,9 @@ struct Proxy
     String QUICSecure;
     String QUICSecret;
 
+    String GRPCServiceName;
+    String GRPCMode;
+
     tribool UDP;
     tribool TCPFastOpen;
     tribool AllowInsecure;
