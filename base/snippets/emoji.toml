@@ -8,7 +8,7 @@ emoji = "🇭🇰"
 
 [[emoji]]
 match = "(?i:\\bTW[N]?\\d*\\b|Taiwan|新北|彰化|\\bCHT\\b|台湾|[^-]台|\\bHINET\\b)"
-emoji = "🇨🇳"
+emoji = "🇹🇼"
 
 [[emoji]]
 match = "(?i:\\bSG[P]?\\d*\\b|Singapore|新加坡|狮城|[^-]新)"
